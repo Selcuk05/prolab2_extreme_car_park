@@ -4,8 +4,8 @@
 class Car
 {   
     private:
-        float max_speed = 10;
-        float speedInterval = 5;
+        float max_speed = 5;
+        float speedInterval = 3;
         float slowInterval = 15;
         float rotationSpeed = 15;
         float speed = 0;

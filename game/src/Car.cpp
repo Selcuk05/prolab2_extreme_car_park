@@ -1,5 +1,6 @@
 #include "Car.h"
-#include "cmath"
+#include <cmath>
+#include <cstdlib>
 # define PI 3.14159265358979323846
 
 Car::Car(float startX, float startY)
@@ -43,7 +44,7 @@ void Car::rotate(float frameTime, int rotationDirection){
         return;
     }
 
-    this->rotation += this->rotationSpeed * frameTime * abs(this->speed) * rotationDirection * this->direction;
+    this->rotation += this->rotationSpeed * frameTime * abs(this->speed) * rotationDirection * this->direction * (rand() % 1001) / 350;
     if(this->rotation >= 360) {
         this->rotation = 0;
     }
@@ -61,6 +62,7 @@ void Car::move(){
 void Car::reinstate(float prevX, float prevY){
     this->x = prevX;
     this->y = prevY;
+    this->rotation = -90;
 }
 
 float Car::getX(){
