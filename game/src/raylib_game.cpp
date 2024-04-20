@@ -38,10 +38,6 @@ int main(){
         BeginDrawing();
         ClearBackground( GRAY );
 
-        if(fade > 0){
-            DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
-        }
-
         if(IsKeyDown( KEY_UP ) || IsKeyDown(KEY_W)) {
             car.accelerate(dt);
         } else if(IsKeyDown( KEY_DOWN ) || IsKeyDown(KEY_S)) {
@@ -69,6 +65,7 @@ int main(){
             car.getX() - (CAR_WIDTH / 2) > (SCREEN_WIDTH - CAR_WIDTH) || car.getY() - (CAR_HEIGHT / 2) > (SCREEN_HEIGHT - CAR_HEIGHT)
         ){
             car.reinstate(startX, startY);
+            fade = 120;
         }
 
         Rectangle car_rec = {
@@ -82,6 +79,14 @@ int main(){
             .y = CAR_WIDTH/2,
         };
         DrawTexturePro(car_texture, car_texture_rec, car_rec, car_origin, car.getRotation(), WHITE);
+
+        if(fade > 0){
+            Rectangle rec = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+            DrawRectangleRec(rec, Fade(BLACK, (float) fade / 100));
+            EndDrawing();
+            fade -= 1;
+            continue;
+        }
 
         EndDrawing();
     }
