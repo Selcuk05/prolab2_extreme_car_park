@@ -21,7 +21,7 @@ class Car
         void slowUntilStationary(float frameTime);
         void rotate(float frameTime, int rotationDirection);
         void move();
-        void reinstate(float prevX, float prevY);
+        void reinstate(float prevX, float prevY, float prevR);
 
         float getX();
         float getY();

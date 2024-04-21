@@ -61,10 +61,10 @@ void Car::move(){
     this->y += y_move;
 }
 
-void Car::reinstate(float prevX, float prevY){
+void Car::reinstate(float prevX, float prevY, float prevR){
     this->x = prevX;
     this->y = prevY;
-    this->rotation = -90;
+    this->rotation = prevR;
 }
 
 float Car::getX(){

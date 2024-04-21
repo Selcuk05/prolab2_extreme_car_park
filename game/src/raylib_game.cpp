@@ -3,12 +3,12 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
-#include <string>
 
 #define BGCOLOR (Color){128, 128, 128}
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
 #define TOP_LIMIT_Y 100
+
 #define CAR_WIDTH 60
 #define CAR_HEIGHT 130
 #define BOX_WIDTH 80
@@ -17,10 +17,13 @@
 #define CONT_HEIGHT 90
 #define STAR_WIDTH 30
 #define STAR_HEIGHT 30
+
 #define SUCCESS_COLLISION_PERCENTAGE 75
 #define ONE_STAR_TIME 20
 #define TWO_STAR_TIME 15
 #define THREE_STAR_TIME 10
+
+#define DEBUG_MODE true
 
 using namespace std;
 
@@ -125,6 +128,12 @@ int main(){
             } else if(IsKeyDown( KEY_RIGHT ) || IsKeyDown(KEY_D)) {
                 car.rotate(dt, -1);
             }
+            
+            float prevX = car.getX();
+            float prevY = car.getY();
+            float prevR = car.getRotation();
+
+            car.move();
 
             // duvara vurdu
             if(
@@ -134,7 +143,8 @@ int main(){
                 car.getY() - (CAR_HEIGHT / 2) > (SCREEN_HEIGHT - CAR_HEIGHT)
             ){
                 crashed = true;
-                cout << "duvar" << endl;
+                car.reinstate(prevX, prevY, prevR);
+                if(DEBUG_MODE) cout << "duvar" << endl;
             }
 
             // kutuya vurdu
@@ -144,34 +154,34 @@ int main(){
             allCrashables.insert(allCrashables.end(), containers.begin(), containers.end());
             for (auto & r : allCrashables) {
                 if(CheckCollisionRecs(carCurrentRect, r)){
+                    Rectangle coll = GetCollisionRec(carCurrentRect, r);
+                    if(DEBUG_MODE) DrawRectangleRec(coll, RED);
                     crashed = true;
+                    car.reinstate(prevX, prevY, prevR);
+                    if(DEBUG_MODE) cout << "Kutu" << endl;
                 }
             }
 
             // sarı kutuya girdi
             if(CheckCollisionRecs(carCurrentRect, parkRect)){
                 Rectangle coll = GetCollisionRec(carCurrentRect, parkRect);
+                if(DEBUG_MODE) DrawRectangleRec(coll, RED);
                 if(100 * coll.width * coll.height >= SUCCESS_COLLISION_PERCENTAGE * parkRect.width * parkRect.height){
                     levelComplete = true;
+                    if(DEBUG_MODE) cout << "Sari kutu" << endl;
                 }
             }
         }
 
-        if(!crashed && !levelComplete){
-            car.move();
-        }
-
         if(crashed && IsKeyPressed(KEY_ENTER)){
             crashed = false;
-            car.reinstate(startX, startY);
+            car.reinstate(startX, startY, -90);
             fade = 120;
             totalTime = 0;
-        }
-
-        if(levelComplete && IsKeyPressed(KEY_ENTER)){
+        }else if(levelComplete && IsKeyPressed(KEY_ENTER)){
             levelComplete = false;
             level += 1;
-            car.reinstate(startX, startY);
+            car.reinstate(startX, startY, -90);
             fade = 120;
             totalTime = 0;
         }
@@ -237,7 +247,7 @@ int main(){
 }
 
 void initBoxes(vector<Rectangle>& boxes, Texture2D boxTexture, Rectangle boxRec, int level){
-    bool _ = boxes.empty();
+    boxes.clear();
     Rectangle box;
 
     // top boxes
@@ -265,7 +275,7 @@ void initBoxes(vector<Rectangle>& boxes, Texture2D boxTexture, Rectangle boxRec,
 }
 
 void initContainers(vector<Rectangle>& containers, Texture2D contTexture, Rectangle contRec, int level){
-    bool _ = containers.empty();
+    containers.clear();
     Rectangle container;
 
     if(level == 1){
