@@ -3,6 +3,7 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
+#include <string>
 
 #define BGCOLOR (Color){128, 128, 128}
 #define SCREEN_WIDTH 1280
@@ -12,20 +13,32 @@
 #define CAR_HEIGHT 130
 #define BOX_WIDTH 80
 #define BOX_HEIGHT 80
+#define CONT_WIDTH 250
+#define CONT_HEIGHT 90
+#define STAR_WIDTH 30
+#define STAR_HEIGHT 30
+#define SUCCESS_COLLISION_PERCENTAGE 75
+#define ONE_STAR_TIME 20
+#define TWO_STAR_TIME 15
+#define THREE_STAR_TIME 10
 
 using namespace std;
 
 void initBoxes(vector<Rectangle>& boxes, Texture2D boxTexture, Rectangle boxRec, int level);
-void initParkRect();
+void initContainers(vector<Rectangle>& containers, Texture2D contTexture, Rectangle contRec, int level);
+Rectangle initParkRect(int level);
 
 int main(){
+    // random for car movement deviation
     srand(time(0));
 
+    // window/game/raylib settings
     SetTraceLogLevel(LOG_ERROR); 
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Extreme Car Parking - Selçuk Öz");
     SetWindowState(FLAG_WINDOW_UNDECORATED);
     SetTargetFPS(60);
 
+    // images and textures
     Image car_image = LoadImage("resources/car.png");
     ImageRotateCW(&car_image);
     ImageResize(&car_image, CAR_WIDTH, CAR_HEIGHT);
@@ -47,12 +60,26 @@ int main(){
     Texture2D box_texture = LoadTextureFromImage(box_image);
     Rectangle box_rec = {0, 0, (float) box_texture.width, (float) box_texture.height};
 
+    Image container_image = LoadImage("resources/container.png");
+    ImageResize(&container_image, CONT_WIDTH, CONT_HEIGHT);
+    Texture2D container_texture = LoadTextureFromImage(container_image);
+    Rectangle container_rec = {0, 0, (float) container_texture.width, (float) container_texture.height};
+
+    Image star_image = LoadImage("resources/star.png");
+    ImageResize(&star_image, STAR_WIDTH, STAR_HEIGHT);
+    Texture2D star_texture = LoadTextureFromImage(star_image);
+    Rectangle star_rec = {0, 0, (float) star_texture.width, (float) star_texture.height};
+
     UnloadImage(car_image);
     UnloadImage(exit_image);
     UnloadImage(box_image);
 
-    const float startX = 1000;
-    const float startY = 400;
+    int level = 1;
+    bool levelComplete = false;
+    Vector2 levelSpawns[3] = {{1000, 300}, {}, {}};
+
+    float startX = levelSpawns[0].x;
+    float startY = levelSpawns[0].y;
     Car car(startX, startY);
 
     int fade = 0;
@@ -62,8 +89,8 @@ int main(){
 
     Vector2 mousePoint = {0.0f, 0.0f};
 
-    int level = 1;
     vector<Rectangle> boxes;
+    vector<Rectangle> containers;
     Rectangle parkRect;
 
     while (!WindowShouldClose())
@@ -79,8 +106,10 @@ int main(){
         BeginDrawing();
         ClearBackground( GRAY );
         initBoxes(boxes, box_texture, box_rec, level);
+        initContainers(containers, container_texture, container_rec, level);
+        Rectangle parkRect = initParkRect(level);
 
-        if(!crashed){
+        if(!crashed && !levelComplete){
             totalTime += dt;
 
             if(IsKeyDown( KEY_UP ) || IsKeyDown(KEY_W)) {
@@ -97,8 +126,6 @@ int main(){
                 car.rotate(dt, -1);
             }
 
-            car.move();
-
             // duvara vurdu
             if(
                 car.getX() < CAR_WIDTH || 
@@ -107,15 +134,31 @@ int main(){
                 car.getY() - (CAR_HEIGHT / 2) > (SCREEN_HEIGHT - CAR_HEIGHT)
             ){
                 crashed = true;
+                cout << "duvar" << endl;
             }
 
             // kutuya vurdu
             Rectangle carCurrentRect = {car.getX() - CAR_WIDTH / 2, car.getY() - CAR_HEIGHT / 2, CAR_WIDTH, CAR_HEIGHT};
-            for (auto & r : boxes) {
+            vector<Rectangle> allCrashables;
+            allCrashables.insert(allCrashables.end(), boxes.begin(), boxes.end());
+            allCrashables.insert(allCrashables.end(), containers.begin(), containers.end());
+            for (auto & r : allCrashables) {
                 if(CheckCollisionRecs(carCurrentRect, r)){
                     crashed = true;
                 }
             }
+
+            // sarı kutuya girdi
+            if(CheckCollisionRecs(carCurrentRect, parkRect)){
+                Rectangle coll = GetCollisionRec(carCurrentRect, parkRect);
+                if(100 * coll.width * coll.height >= SUCCESS_COLLISION_PERCENTAGE * parkRect.width * parkRect.height){
+                    levelComplete = true;
+                }
+            }
+        }
+
+        if(!crashed && !levelComplete){
+            car.move();
         }
 
         if(crashed && IsKeyPressed(KEY_ENTER)){
@@ -124,6 +167,15 @@ int main(){
             fade = 120;
             totalTime = 0;
         }
+
+        if(levelComplete && IsKeyPressed(KEY_ENTER)){
+            levelComplete = false;
+            level += 1;
+            car.reinstate(startX, startY);
+            fade = 120;
+            totalTime = 0;
+        }
+
 
         Rectangle car_rec = {
             .x = car.getX(),
@@ -137,18 +189,31 @@ int main(){
         };
         DrawTexturePro(car_texture, car_texture_rec, car_rec, car_origin, car.getRotation(), WHITE);
 
-        DrawRectangle(0, 0, SCREEN_WIDTH, 100, WHITE);
+        DrawRectangle(0, 0, SCREEN_WIDTH, 100, DARKGRAY);
         DrawTextureRec(exit_texture, exit_rec, (Vector2){ exitBounds.x, exitBounds.y }, WHITE);
-
-        initBoxes(boxes, box_texture, box_rec, level);
 
         if(crashed){
             DrawText("You Crashed!", 25, 25, 25, RED);
             DrawText("Press ENTER to restart", 25, 50, 25, RED);
         }
 
-        DrawText(TextFormat("%d", (int) totalTime), SCREEN_WIDTH/2, 20, 50, BLACK);
-        DrawText(TextFormat("Level %d", level), SCREEN_WIDTH/2 - 40, 65, 30, BLACK);
+        if(levelComplete){
+            DrawText("Level Complete!", 25, 25, 25, GREEN);
+            DrawText("Press ENTER to continue", 25, 50, 25, GREEN);
+            if(totalTime <= ONE_STAR_TIME && TWO_STAR_TIME < totalTime){
+                DrawTextureRec(star_texture, star_rec, (Vector2){ 400, 30 }, WHITE);
+            } else if(totalTime <= TWO_STAR_TIME && THREE_STAR_TIME < totalTime){
+                DrawTextureRec(star_texture, star_rec, (Vector2){ 400, 30 }, WHITE);
+                DrawTextureRec(star_texture, star_rec, (Vector2){ 450, 30 }, WHITE);
+            } else if(totalTime <= THREE_STAR_TIME){
+                DrawTextureRec(star_texture, star_rec, (Vector2){ 400, 30 }, WHITE);
+                DrawTextureRec(star_texture, star_rec, (Vector2){ 450, 30 }, WHITE);
+                DrawTextureRec(star_texture, star_rec, (Vector2){ 500, 30 }, WHITE);
+            }
+        }
+
+        DrawText(TextFormat("%d", (int) totalTime), SCREEN_WIDTH/2, 20, 50, WHITE);
+        DrawText(TextFormat("Level %d", level), SCREEN_WIDTH/2, 65, 30, WHITE);
         
         if(fade > 0 && !crashed){
             Rectangle rec = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
@@ -162,6 +227,10 @@ int main(){
     }
 
     UnloadTexture(car_texture);
+    UnloadTexture(box_texture);
+    UnloadTexture(exit_texture);
+    UnloadTexture(star_texture);
+    UnloadTexture(container_texture);
     CloseWindow();
 
     return 0;
@@ -178,5 +247,59 @@ void initBoxes(vector<Rectangle>& boxes, Texture2D boxTexture, Rectangle boxRec,
         boxes.push_back(box);
     }
 
+    if(level == 1){
+        for(float i = SCREEN_WIDTH / 2; i <= SCREEN_WIDTH - BOX_WIDTH; i += BOX_WIDTH){
+            box = {i, SCREEN_HEIGHT / 2 + TOP_LIMIT_Y, BOX_WIDTH, BOX_HEIGHT};
+            DrawTextureRec(boxTexture, boxRec, (Vector2){i, SCREEN_HEIGHT / 2 + TOP_LIMIT_Y}, WHITE);
+            boxes.push_back(box);
+        }
+    }
 
+    if(level == 2){
+        return;
+    }
+
+    if(level == 3){
+        return;
+    }
+}
+
+void initContainers(vector<Rectangle>& containers, Texture2D contTexture, Rectangle contRec, int level){
+    bool _ = containers.empty();
+    Rectangle container;
+
+    if(level == 1){
+        for(float i = TOP_LIMIT_Y + 80; i <= SCREEN_HEIGHT/1.7; i += CONT_HEIGHT){
+            container = {100, i, CONT_WIDTH, CONT_HEIGHT};
+            DrawTextureRec(contTexture, contRec, (Vector2){100, i}, WHITE);
+            containers.push_back(container);
+        }
+    }
+
+    if(level == 2){
+        return;
+    }
+
+    if(level == 3){
+        return;
+    }
+}
+
+Rectangle initParkRect(int level){
+    Rectangle pr;
+
+    if(level == 1){
+        pr = {100, SCREEN_HEIGHT - 160, 70, 140};    
+    }
+
+    if(level == 2){
+        Rectangle pr = {500, 500, 70, 140};
+    }
+
+    if(level == 3){
+        Rectangle pr = {500, 500, 70, 140};
+    }
+
+    DrawRectangleRec(pr, YELLOW);
+    return pr;
 }

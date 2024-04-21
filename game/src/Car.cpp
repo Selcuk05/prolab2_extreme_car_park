@@ -1,7 +1,7 @@
 #include "Car.h"
 #include <cmath>
 #include <cstdlib>
-# define PI 3.14159265358979323846
+#define PI 3.14159265358979323846
 
 Car::Car(float startX, float startY)
 {
@@ -12,6 +12,7 @@ Car::Car(float startX, float startY)
 void Car::accelerate(float frameTime){
     this->direction = -1;
     this->speed += this->speedInterval * frameTime;
+    this->rotate(frameTime, (rand() % 2));
     if(this->speed >= this->max_speed) {
         this->speed = this->max_speed;
     }
@@ -20,6 +21,7 @@ void Car::accelerate(float frameTime){
 void Car::deaccelerate(float frameTime){
     this->direction = 1;
     this->speed -= this->speedInterval * frameTime;
+    this->rotate(frameTime, (rand() % 2));
     if(this->speed >= this->max_speed) {
         this->speed = this->max_speed;
     }
