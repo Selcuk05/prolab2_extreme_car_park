@@ -11,25 +11,28 @@
 
 #define CAR_WIDTH 60
 #define CAR_HEIGHT 130
+
 #define BOX_WIDTH 80
 #define BOX_HEIGHT 80
+
 #define CONT_WIDTH 250
 #define CONT_HEIGHT 90
+
 #define STAR_WIDTH 30
 #define STAR_HEIGHT 30
 
-#define SUCCESS_COLLISION_PERCENTAGE 75
+#define SUCCESS_COLLISION_PERCENTAGE 70
 #define ONE_STAR_TIME 20
 #define TWO_STAR_TIME 15
 #define THREE_STAR_TIME 10
-
-#define DEBUG_MODE true
 
 using namespace std;
 
 void initBoxes(vector<Rectangle>& boxes, Texture2D boxTexture, Rectangle boxRec, int level);
 void initContainers(vector<Rectangle>& containers, Texture2D contTexture, Rectangle contRec, int level);
 Rectangle initParkRect(int level);
+
+static bool DEBUG_MODE = false;
 
 int main(){
     // random for car movement deviation
@@ -77,12 +80,14 @@ int main(){
     UnloadImage(exit_image);
     UnloadImage(box_image);
 
-    int level = 1;
+    int level = 3;
     bool levelComplete = false;
-    Vector2 levelSpawns[3] = {{1000, 300}, {}, {}};
+    Vector3 levelSpawns[3] = {{1000, 300, -90}, {100, 300, -90}, {850, 625, -45}};
+    int levelStars[3] = {0, 0, 0};
 
-    float startX = levelSpawns[0].x;
-    float startY = levelSpawns[0].y;
+    float startX = 0;
+    float startY = 0;
+    float startR = 0;
     Car car(startX, startY);
 
     int fade = 0;
@@ -101,13 +106,47 @@ int main(){
         float dt = GetFrameTime();
         Vector2 mousePoint = GetMousePosition();
 
+        if(startX != levelSpawns[level-1].x || startY != levelSpawns[level-1].y || startR != levelSpawns[level-1].z){
+            startX = levelSpawns[level-1].x;
+            startY = levelSpawns[level-1].y;
+            startR = levelSpawns[level-1].z;
+            car.reinstate(startX, startY, startR);
+        }
+
         if (CheckCollisionPointRec(mousePoint, exitBounds))
         {   
             if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) break;
         }
+
+        if (CheckCollisionPointRec(mousePoint, {SCREEN_WIDTH/2+50, 30, 50, 50}))
+        {   
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) DEBUG_MODE = !DEBUG_MODE;
+        }
         
         BeginDrawing();
         ClearBackground( GRAY );
+
+        if(level == 4){
+            Rectangle rec = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+            DrawRectangleRec(rec, BLACK);
+            DrawTextureRec(exit_texture, exit_rec, (Vector2){ exitBounds.x, exitBounds.y }, WHITE);
+            DrawText("Congrulations!", SCREEN_WIDTH/3, SCREEN_HEIGHT/3, 60, GREEN);
+            DrawText("Level 1: ", SCREEN_WIDTH/3, SCREEN_HEIGHT/3 + 80, 30, GREEN);
+            for(int i = 0; i < levelStars[0]; i++){
+                DrawTextureRec(star_texture, star_rec, (Vector2){ SCREEN_WIDTH/3 + 140 + 60 * i, SCREEN_HEIGHT/3 + 80 }, WHITE);
+            }
+            DrawText("Level 2: ", SCREEN_WIDTH/3, SCREEN_HEIGHT/3 + 140, 30, GREEN);
+            for(int i = 0; i < levelStars[1]; i++){
+                DrawTextureRec(star_texture, star_rec, (Vector2){ SCREEN_WIDTH/3 + 140 + 60 * i, SCREEN_HEIGHT/3 + 140 }, WHITE);
+            }
+            DrawText("Level 3: ", SCREEN_WIDTH/3, SCREEN_HEIGHT/3 + 200, 30, GREEN);
+            for(int i = 0; i < levelStars[2]; i++){
+                DrawTextureRec(star_texture, star_rec, (Vector2){ SCREEN_WIDTH/3 + 140 + 60 * i, SCREEN_HEIGHT/3 + 200 }, WHITE);
+            }
+            EndDrawing();
+            continue;
+        }
+
         initBoxes(boxes, box_texture, box_rec, level);
         initContainers(containers, container_texture, container_rec, level);
         Rectangle parkRect = initParkRect(level);
@@ -147,15 +186,29 @@ int main(){
                 if(DEBUG_MODE) cout << "duvar" << endl;
             }
 
+            bool vertical = 
+            (car.getRotation() < -135 && car.getRotation() > -225)
+                || 
+            (car.getRotation() > 135 && car.getRotation() < 225)
+                ||
+            (car.getRotation() > -45 && car.getRotation() < 45);
+
             // kutuya vurdu
-            Rectangle carCurrentRect = {car.getX() - CAR_WIDTH / 2, car.getY() - CAR_HEIGHT / 2, CAR_WIDTH, CAR_HEIGHT};
+            Rectangle carCurrentRect = {
+                vertical ? car.getX() - CAR_HEIGHT / 2 : car.getX() - CAR_WIDTH / 2, 
+                vertical ? car.getY() - CAR_WIDTH / 2 : car.getY() - CAR_HEIGHT / 2, 
+                vertical ? CAR_HEIGHT : CAR_WIDTH, 
+                vertical ? CAR_WIDTH : CAR_HEIGHT
+            };
+            if(DEBUG_MODE) DrawRectangleRec(carCurrentRect, RED);
             vector<Rectangle> allCrashables;
             allCrashables.insert(allCrashables.end(), boxes.begin(), boxes.end());
             allCrashables.insert(allCrashables.end(), containers.begin(), containers.end());
-            for (auto & r : allCrashables) {
+            for (Rectangle & r : allCrashables) {
                 if(CheckCollisionRecs(carCurrentRect, r)){
                     Rectangle coll = GetCollisionRec(carCurrentRect, r);
-                    if(DEBUG_MODE) DrawRectangleRec(coll, RED);
+                    if(DEBUG_MODE) cout << coll.width * coll.height << endl;
+                    if(DEBUG_MODE) DrawRectangleRec(coll, BLUE);
                     crashed = true;
                     car.reinstate(prevX, prevY, prevR);
                     if(DEBUG_MODE) cout << "Kutu" << endl;
@@ -191,7 +244,7 @@ int main(){
             .x = car.getX(),
             .y = car.getY(),
             .width = CAR_HEIGHT,
-            .height = CAR_WIDTH,
+            .height = CAR_WIDTH
         };
         Vector2 car_origin = {
             .x = CAR_HEIGHT/2,
@@ -212,18 +265,21 @@ int main(){
             DrawText("Press ENTER to continue", 25, 50, 25, GREEN);
             if(totalTime <= ONE_STAR_TIME && TWO_STAR_TIME < totalTime){
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 400, 30 }, WHITE);
+                levelStars[level-1] = 1;
             } else if(totalTime <= TWO_STAR_TIME && THREE_STAR_TIME < totalTime){
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 400, 30 }, WHITE);
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 450, 30 }, WHITE);
+                levelStars[level-1] = 2;
             } else if(totalTime <= THREE_STAR_TIME){
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 400, 30 }, WHITE);
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 450, 30 }, WHITE);
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 500, 30 }, WHITE);
+                levelStars[level-1] = 3;
             }
         }
 
-        DrawText(TextFormat("%d", (int) totalTime), SCREEN_WIDTH/2, 20, 50, WHITE);
-        DrawText(TextFormat("Level %d", level), SCREEN_WIDTH/2, 65, 30, WHITE);
+        DrawText(TextFormat("%d", (int) totalTime), SCREEN_WIDTH/2, 30, 50, WHITE);
+        DrawText(TextFormat("Level %d", level), SCREEN_WIDTH * 2.2 / 3, 40, 30, WHITE);
         
         if(fade > 0 && !crashed){
             Rectangle rec = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
@@ -253,6 +309,7 @@ void initBoxes(vector<Rectangle>& boxes, Texture2D boxTexture, Rectangle boxRec,
     // top boxes
     for(float i = 0; i <= SCREEN_WIDTH - BOX_WIDTH; i += BOX_WIDTH){
         box = {i, TOP_LIMIT_Y, BOX_WIDTH, BOX_HEIGHT};
+        if(DEBUG_MODE) DrawRectangleRec(box, BLUE);
         DrawTextureRec(boxTexture, boxRec, (Vector2){i, TOP_LIMIT_Y}, WHITE);
         boxes.push_back(box);
     }
@@ -260,16 +317,48 @@ void initBoxes(vector<Rectangle>& boxes, Texture2D boxTexture, Rectangle boxRec,
     if(level == 1){
         for(float i = SCREEN_WIDTH / 2; i <= SCREEN_WIDTH - BOX_WIDTH; i += BOX_WIDTH){
             box = {i, SCREEN_HEIGHT / 2 + TOP_LIMIT_Y, BOX_WIDTH, BOX_HEIGHT};
+            if(DEBUG_MODE) DrawRectangleRec(box, BLUE);
             DrawTextureRec(boxTexture, boxRec, (Vector2){i, SCREEN_HEIGHT / 2 + TOP_LIMIT_Y}, WHITE);
             boxes.push_back(box);
         }
     }
 
     if(level == 2){
+        for(float i = SCREEN_HEIGHT / 1.8; i <= SCREEN_HEIGHT - 80; i += BOX_HEIGHT){
+            box = {700, i, BOX_WIDTH, BOX_HEIGHT};
+            if(DEBUG_MODE) DrawRectangleRec(box, BLUE);
+            DrawTextureRec(boxTexture, boxRec, (Vector2){700, i}, WHITE);
+            boxes.push_back(box);
+        }
+
+        for(float i = SCREEN_HEIGHT / 1.8; i <= SCREEN_HEIGHT - 80; i += BOX_HEIGHT){
+            box = {1000, i, BOX_WIDTH, BOX_HEIGHT};
+            if(DEBUG_MODE) DrawRectangleRec(box, BLUE);
+            DrawTextureRec(boxTexture, boxRec, (Vector2){1000, i}, WHITE);
+            boxes.push_back(box);
+        }
         return;
     }
 
     if(level == 3){
+        for(float i = 625 + CONT_HEIGHT; i <= SCREEN_WIDTH - BOX_WIDTH * 4; i += BOX_WIDTH){
+            box = {i, 400, BOX_WIDTH, BOX_HEIGHT};
+            if(DEBUG_MODE) DrawRectangleRec(box, BLUE);
+            DrawTextureRec(boxTexture, boxRec, (Vector2){i, 400}, WHITE);
+            boxes.push_back(box);
+        }
+
+        box = {625 + CONT_HEIGHT + 3 * BOX_WIDTH, 320, BOX_WIDTH, BOX_HEIGHT};
+        if(DEBUG_MODE) DrawRectangleRec(box, BLUE);
+        DrawTextureRec(boxTexture, boxRec, (Vector2){625 + CONT_HEIGHT + 3 * BOX_WIDTH, 320}, WHITE);
+        boxes.push_back(box);
+
+        for(float i = SCREEN_WIDTH / 3; i <= SCREEN_WIDTH - BOX_WIDTH * 8; i += BOX_WIDTH){
+            box = {i, TOP_LIMIT_Y + BOX_WIDTH, BOX_WIDTH, BOX_HEIGHT};
+            if(DEBUG_MODE) DrawRectangleRec(box, BLUE);
+            DrawTextureRec(boxTexture, boxRec, (Vector2){i, TOP_LIMIT_Y + BOX_WIDTH}, WHITE);
+            boxes.push_back(box);
+        }
         return;
     }
 }
@@ -279,18 +368,57 @@ void initContainers(vector<Rectangle>& containers, Texture2D contTexture, Rectan
     Rectangle container;
 
     if(level == 1){
-        for(float i = TOP_LIMIT_Y + 80; i <= SCREEN_HEIGHT/1.7; i += CONT_HEIGHT){
+        float cont1x = 230;
+        container = {cont1x, SCREEN_HEIGHT-CONT_WIDTH, CONT_HEIGHT, CONT_WIDTH};
+        if(DEBUG_MODE) DrawRectangleRec(container, BLUE);
+        DrawTexturePro(
+            contTexture, 
+            contRec, 
+            {cont1x, SCREEN_HEIGHT-CONT_WIDTH, CONT_WIDTH, CONT_HEIGHT}, 
+            {CONT_HEIGHT/2-45, CONT_WIDTH/2-35}, 
+            90, 
+            WHITE
+        );
+        containers.push_back(container);
+
+        for(float i = TOP_LIMIT_Y + 80; i <= SCREEN_HEIGHT/4; i += CONT_HEIGHT){
             container = {100, i, CONT_WIDTH, CONT_HEIGHT};
+            if(DEBUG_MODE) DrawRectangleRec(container, BLUE);
             DrawTextureRec(contTexture, contRec, (Vector2){100, i}, WHITE);
             containers.push_back(container);
         }
     }
 
     if(level == 2){
+        for(float i = TOP_LIMIT_Y + 80; i <= SCREEN_HEIGHT/2; i += CONT_HEIGHT){
+            container = {200, i, CONT_WIDTH, CONT_HEIGHT};
+            if(DEBUG_MODE) DrawRectangleRec(container, BLUE);
+            DrawTextureRec(contTexture, contRec, (Vector2){200, i}, WHITE);
+            containers.push_back(container);
+        }
         return;
     }
 
     if(level == 3){
+        float cont1x = 625;
+        container = {cont1x, SCREEN_HEIGHT-CONT_WIDTH-25, CONT_HEIGHT, CONT_WIDTH};
+        if(DEBUG_MODE) DrawRectangleRec(container, BLUE);
+        DrawTexturePro(
+            contTexture, 
+            contRec, 
+            {cont1x, SCREEN_HEIGHT-CONT_WIDTH-25, CONT_WIDTH, CONT_HEIGHT}, 
+            {CONT_HEIGHT/2-45, CONT_WIDTH/2-35}, 
+            90, 
+            WHITE
+        );
+        containers.push_back(container);
+
+        for(float i = SCREEN_HEIGHT - 3 * CONT_HEIGHT; i <= SCREEN_HEIGHT - CONT_HEIGHT; i += CONT_HEIGHT){
+            container = {50, i-20, CONT_WIDTH, CONT_HEIGHT};
+            if(DEBUG_MODE) DrawRectangleRec(container, BLUE);
+            DrawTextureRec(contTexture, contRec, (Vector2){50, i-20}, WHITE);
+            containers.push_back(container);
+        }
         return;
     }
 }
@@ -303,11 +431,11 @@ Rectangle initParkRect(int level){
     }
 
     if(level == 2){
-        Rectangle pr = {500, 500, 70, 140};
+        pr = {SCREEN_WIDTH / 1.5, SCREEN_HEIGHT - 160, 70, 140};
     }
 
     if(level == 3){
-        Rectangle pr = {500, 500, 70, 140};
+        pr = {100, 220, 70, 140};
     }
 
     DrawRectangleRec(pr, YELLOW);
