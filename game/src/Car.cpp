@@ -50,6 +50,9 @@ void Car::rotate(float frameTime, int rotationDirection){
     if(this->rotation >= 360) {
         this->rotation = 0;
     }
+    if(this->rotation < 0){
+        this->rotation = abs(360-this->rotation);
+    }
 }
 
 void Car::move(){

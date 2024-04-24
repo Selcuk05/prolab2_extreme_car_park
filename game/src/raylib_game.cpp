@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include "Car.h"
+#include "Level.h"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -25,6 +26,8 @@
 #define ONE_STAR_TIME 20
 #define TWO_STAR_TIME 15
 #define THREE_STAR_TIME 10
+
+#define FADE_FRAMES 120
 
 using namespace std;
 
@@ -80,10 +83,9 @@ int main(){
     UnloadImage(exit_image);
     UnloadImage(box_image);
 
-    int level = 3;
+    int level = 1;
     bool levelComplete = false;
-    Vector3 levelSpawns[3] = {{1000, 300, -90}, {100, 300, -90}, {850, 625, -45}};
-    int levelStars[3] = {0, 0, 0};
+    Level levels[3] = {Level(1000, 300, 270), Level(100, 300, 270), Level(850, 625, 315)};
 
     float startX = 0;
     float startY = 0;
@@ -105,23 +107,6 @@ int main(){
     {
         float dt = GetFrameTime();
         Vector2 mousePoint = GetMousePosition();
-
-        if(startX != levelSpawns[level-1].x || startY != levelSpawns[level-1].y || startR != levelSpawns[level-1].z){
-            startX = levelSpawns[level-1].x;
-            startY = levelSpawns[level-1].y;
-            startR = levelSpawns[level-1].z;
-            car.reinstate(startX, startY, startR);
-        }
-
-        if (CheckCollisionPointRec(mousePoint, exitBounds))
-        {   
-            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) break;
-        }
-
-        if (CheckCollisionPointRec(mousePoint, {SCREEN_WIDTH/2+50, 30, 50, 50}))
-        {   
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) DEBUG_MODE = !DEBUG_MODE;
-        }
         
         BeginDrawing();
         ClearBackground( GRAY );
@@ -129,22 +114,48 @@ int main(){
         if(level == 4){
             Rectangle rec = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
             DrawRectangleRec(rec, BLACK);
-            DrawTextureRec(exit_texture, exit_rec, (Vector2){ exitBounds.x, exitBounds.y }, WHITE);
             DrawText("Congrulations!", SCREEN_WIDTH/3, SCREEN_HEIGHT/3, 60, GREEN);
+
+            DrawTextureRec(exit_texture, exit_rec, (Vector2){ exitBounds.x, exitBounds.y }, WHITE); // exit btn on gameover
+
+            float i;
+
             DrawText("Level 1: ", SCREEN_WIDTH/3, SCREEN_HEIGHT/3 + 80, 30, GREEN);
-            for(int i = 0; i < levelStars[0]; i++){
+            for(i = 0; i < levels[0].getStars(); i++){
                 DrawTextureRec(star_texture, star_rec, (Vector2){ SCREEN_WIDTH/3 + 140 + 60 * i, SCREEN_HEIGHT/3 + 80 }, WHITE);
             }
+
             DrawText("Level 2: ", SCREEN_WIDTH/3, SCREEN_HEIGHT/3 + 140, 30, GREEN);
-            for(int i = 0; i < levelStars[1]; i++){
+            for(i = 0; i < levels[1].getStars(); i++){
                 DrawTextureRec(star_texture, star_rec, (Vector2){ SCREEN_WIDTH/3 + 140 + 60 * i, SCREEN_HEIGHT/3 + 140 }, WHITE);
             }
+
             DrawText("Level 3: ", SCREEN_WIDTH/3, SCREEN_HEIGHT/3 + 200, 30, GREEN);
-            for(int i = 0; i < levelStars[2]; i++){
+            for(i = 0; i < levels[2].getStars(); i++){
                 DrawTextureRec(star_texture, star_rec, (Vector2){ SCREEN_WIDTH/3 + 140 + 60 * i, SCREEN_HEIGHT/3 + 200 }, WHITE);
             }
+
             EndDrawing();
             continue;
+        }
+
+        // wont continue here if level > 3
+        Level lvl = levels[level-1];
+        if(startX != lvl.spawnX || startY != lvl.spawnY || startR != lvl.spawnR){
+            startX = lvl.spawnX;
+            startY = lvl.spawnY;
+            startR = lvl.spawnR;
+            car.reinstate(startX, startY, startR);
+        }
+
+        if (CheckCollisionPointRec(mousePoint, exitBounds))
+        {   
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) break;
+        }
+
+        if (CheckCollisionPointRec(mousePoint, {SCREEN_WIDTH/2+50, 30, 50, 50}))
+        {   
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) DEBUG_MODE = !DEBUG_MODE;
         }
 
         initBoxes(boxes, box_texture, box_rec, level);
@@ -197,8 +208,8 @@ int main(){
             Rectangle carCurrentRect = {
                 vertical ? car.getX() - CAR_HEIGHT / 2 : car.getX() - CAR_WIDTH / 2, 
                 vertical ? car.getY() - CAR_WIDTH / 2 : car.getY() - CAR_HEIGHT / 2, 
-                vertical ? CAR_HEIGHT : CAR_WIDTH, 
-                vertical ? CAR_WIDTH : CAR_HEIGHT
+                vertical ? (float) CAR_HEIGHT : (float) CAR_WIDTH, 
+                vertical ? (float) CAR_WIDTH : (float) CAR_HEIGHT
             };
             if(DEBUG_MODE) DrawRectangleRec(carCurrentRect, RED);
             vector<Rectangle> allCrashables;
@@ -228,14 +239,14 @@ int main(){
 
         if(crashed && IsKeyPressed(KEY_ENTER)){
             crashed = false;
-            car.reinstate(startX, startY, -90);
-            fade = 120;
+            car.reinstate(startX, startY, startR);
+            fade = FADE_FRAMES;
             totalTime = 0;
         }else if(levelComplete && IsKeyPressed(KEY_ENTER)){
             levelComplete = false;
             level += 1;
-            car.reinstate(startX, startY, -90);
-            fade = 120;
+            car.reinstate(startX, startY, startR);
+            fade = FADE_FRAMES;
             totalTime = 0;
         }
 
@@ -265,16 +276,16 @@ int main(){
             DrawText("Press ENTER to continue", 25, 50, 25, GREEN);
             if(totalTime <= ONE_STAR_TIME && TWO_STAR_TIME < totalTime){
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 400, 30 }, WHITE);
-                levelStars[level-1] = 1;
+                levels[level-1].setStars(1);
             } else if(totalTime <= TWO_STAR_TIME && THREE_STAR_TIME < totalTime){
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 400, 30 }, WHITE);
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 450, 30 }, WHITE);
-                levelStars[level-1] = 2;
+                levels[level-1].setStars(2);
             } else if(totalTime <= THREE_STAR_TIME){
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 400, 30 }, WHITE);
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 450, 30 }, WHITE);
                 DrawTextureRec(star_texture, star_rec, (Vector2){ 500, 30 }, WHITE);
-                levelStars[level-1] = 3;
+                levels[level-1].setStars(3);
             }
         }
 

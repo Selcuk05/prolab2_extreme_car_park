@@ -12,7 +12,7 @@ class Car
         float x;
         float y;
         int direction = -1;
-        float rotation = -90;
+        float rotation = 0;
     public:
         Car(float startX, float startY);
 
