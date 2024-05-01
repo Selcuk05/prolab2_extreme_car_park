@@ -19,6 +19,9 @@
 #define CONT_WIDTH 250
 #define CONT_HEIGHT 90
 
+#define PARK_RECT_WIDTH 70
+#define PARK_RECT_HEIGHT 140
+
 #define STAR_WIDTH 30
 #define STAR_HEIGHT 30
 
@@ -41,13 +44,11 @@ int main(){
     // random for car movement deviation
     srand(time(0));
 
-    // window/game/raylib settings
     SetTraceLogLevel(LOG_ERROR); 
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Extreme Car Parking - Selçuk Öz");
     SetWindowState(FLAG_WINDOW_UNDECORATED);
     SetTargetFPS(60);
 
-    // images and textures
     Image car_image = LoadImage("resources/car.png");
     ImageRotateCW(&car_image);
     ImageResize(&car_image, CAR_WIDTH, CAR_HEIGHT);
@@ -82,6 +83,8 @@ int main(){
     UnloadImage(car_image);
     UnloadImage(exit_image);
     UnloadImage(box_image);
+    UnloadImage(container_image);
+    UnloadImage(star_image);
 
     int level = 1;
     bool levelComplete = false;
@@ -97,8 +100,6 @@ int main(){
 
     float totalTime = 0;
 
-    Vector2 mousePoint = {0.0f, 0.0f};
-
     vector<Rectangle> boxes;
     vector<Rectangle> containers;
     Rectangle parkRect;
@@ -111,9 +112,14 @@ int main(){
         BeginDrawing();
         ClearBackground( GRAY );
 
+        if (CheckCollisionPointRec(mousePoint, exitBounds))
+        {   
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) break;
+        }
+
         if(level == 4){
             Rectangle rec = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
-            DrawRectangleRec(rec, BLACK);
+            DrawRectangleRec(rec, DARKGRAY);
             DrawText("Congrulations!", SCREEN_WIDTH/3, SCREEN_HEIGHT/3, 60, GREEN);
 
             DrawTextureRec(exit_texture, exit_rec, (Vector2){ exitBounds.x, exitBounds.y }, WHITE); // exit btn on gameover
@@ -146,11 +152,6 @@ int main(){
             startY = lvl.spawnY;
             startR = lvl.spawnR;
             car.reinstate(startX, startY, startR);
-        }
-
-        if (CheckCollisionPointRec(mousePoint, exitBounds))
-        {   
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) break;
         }
 
         if (CheckCollisionPointRec(mousePoint, {SCREEN_WIDTH/2+50, 30, 50, 50}))
@@ -308,8 +309,8 @@ int main(){
     UnloadTexture(exit_texture);
     UnloadTexture(star_texture);
     UnloadTexture(container_texture);
-    CloseWindow();
 
+    CloseWindow();
     return 0;
 }
 
@@ -438,15 +439,15 @@ Rectangle initParkRect(int level){
     Rectangle pr;
 
     if(level == 1){
-        pr = {100, SCREEN_HEIGHT - 160, 70, 140};    
+        pr = {100, SCREEN_HEIGHT - 160, PARK_RECT_WIDTH, PARK_RECT_HEIGHT};    
     }
 
     if(level == 2){
-        pr = {SCREEN_WIDTH / 1.5, SCREEN_HEIGHT - 160, 70, 140};
+        pr = {SCREEN_WIDTH / 1.5, SCREEN_HEIGHT - 160, PARK_RECT_WIDTH, PARK_RECT_HEIGHT};
     }
 
     if(level == 3){
-        pr = {100, 220, 70, 140};
+        pr = {100, 220, PARK_RECT_WIDTH, PARK_RECT_HEIGHT};
     }
 
     DrawRectangleRec(pr, YELLOW);
