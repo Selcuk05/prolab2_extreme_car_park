@@ -88,7 +88,7 @@ int main(){
 
     int level = 1;
     bool levelComplete = false;
-    Level levels[3] = {Level(1000, 300, 270), Level(100, 300, 270), Level(850, 625, 315)};
+    Level levels[3] = {Level(1000, 300, 270), Level(100, 300, 270), Level(850, 600, 315)};
 
     float startX = 0;
     float startY = 0;
@@ -122,7 +122,7 @@ int main(){
             DrawRectangleRec(rec, DARKGRAY);
             DrawText("Congrulations!", SCREEN_WIDTH/3, SCREEN_HEIGHT/3, 60, GREEN);
 
-            DrawTextureRec(exit_texture, exit_rec, (Vector2){ exitBounds.x, exitBounds.y }, WHITE); // exit btn on gameover
+            DrawTextureRec(exit_texture, exit_rec, (Vector2){ exitBounds.x, exitBounds.y }, WHITE);
 
             float i;
 
@@ -145,7 +145,6 @@ int main(){
             continue;
         }
 
-        // wont continue here if level > 3
         Level lvl = levels[level-1];
         if(startX != lvl.spawnX || startY != lvl.spawnY || startR != lvl.spawnR){
             startX = lvl.spawnX;
@@ -198,12 +197,15 @@ int main(){
                 if(DEBUG_MODE) cout << "duvar" << endl;
             }
 
+            float currentRotation = car.getRotation();
             bool vertical = 
-            (car.getRotation() < -135 && car.getRotation() > -225)
+            (currentRotation < -135 && currentRotation > -225)
                 || 
-            (car.getRotation() > 135 && car.getRotation() < 225)
+            (currentRotation > 135 && currentRotation < 225)
                 ||
-            (car.getRotation() > -45 && car.getRotation() < 45);
+            (currentRotation > -45 && currentRotation < 45)
+                ||
+            (currentRotation > 315);
 
             // kutuya vurdu
             Rectangle carCurrentRect = {
