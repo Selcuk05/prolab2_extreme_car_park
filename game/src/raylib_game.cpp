@@ -30,7 +30,7 @@
 #define TWO_STAR_TIME 15
 #define THREE_STAR_TIME 10
 
-#define FADE_FRAMES 120
+#define FADE_FRAMES 100
 
 using namespace std;
 
@@ -41,13 +41,18 @@ Rectangle initParkRect(int level);
 static bool DEBUG_MODE = false;
 
 int main(){
-    // random for car movement deviation
     srand(time(0));
 
     SetTraceLogLevel(LOG_ERROR); 
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Extreme Car Parking - Selçuk Öz");
+    InitAudioDevice();
     SetWindowState(FLAG_WINDOW_UNDECORATED);
     SetTargetFPS(60);
+
+    Music music = LoadMusicStream("resources/cant_tell_me_nothin.mp3");
+    SetMusicVolume(music, 0.3f);
+    bool musicPaused = false;
+    PlayMusicStream(music);
 
     Image car_image = LoadImage("resources/car.png");
     ImageRotateCW(&car_image);
@@ -63,6 +68,16 @@ int main(){
         exit_texture.height / 2.0f, 
         (float) exit_texture.width,
         (float) exit_texture.height
+    };
+
+    Texture2D sound_texture = LoadTexture("resources/sound.png");
+    Texture2D soundoff_texture = LoadTexture("resources/soundoff.png");
+    Rectangle sound_rec = {0, 0, (float) sound_texture.width, (float) sound_texture.height};
+    Rectangle sound_bounds = { 
+        SCREEN_WIDTH - sound_texture.width * 3.0f, 
+        sound_texture.height / 2.0f, 
+        (float) sound_texture.width,
+        (float) sound_texture.height
     };
 
     Image box_image = LoadImage("resources/box.png");
@@ -109,13 +124,35 @@ int main(){
         float dt = GetFrameTime();
         Vector2 mousePoint = GetMousePosition();
         
-        BeginDrawing();
-        ClearBackground( GRAY );
+        UpdateMusicStream(music);
+        
+        if (IsKeyPressed(KEY_SPACE))
+        {
+            StopMusicStream(music);
+            PlayMusicStream(music);
+        }
 
         if (CheckCollisionPointRec(mousePoint, exitBounds))
         {   
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) break;
         }
+
+        if (CheckCollisionPointRec(mousePoint, sound_bounds))
+        {   
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
+                musicPaused = !musicPaused;
+                if (musicPaused) PauseMusicStream(music);
+                else ResumeMusicStream(music);
+            }
+        }
+
+        if (CheckCollisionPointRec(mousePoint, {SCREEN_WIDTH/2+50, 30, 50, 50}))
+        {   
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) DEBUG_MODE = !DEBUG_MODE;
+        }
+
+        BeginDrawing();
+        ClearBackground( GRAY );
 
         if(level == 4){
             Rectangle rec = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
@@ -151,11 +188,6 @@ int main(){
             startY = lvl.spawnY;
             startR = lvl.spawnR;
             car.reinstate(startX, startY, startR);
-        }
-
-        if (CheckCollisionPointRec(mousePoint, {SCREEN_WIDTH/2+50, 30, 50, 50}))
-        {   
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) DEBUG_MODE = !DEBUG_MODE;
         }
 
         initBoxes(boxes, box_texture, box_rec, level);
@@ -268,6 +300,7 @@ int main(){
 
         DrawRectangle(0, 0, SCREEN_WIDTH, 100, DARKGRAY);
         DrawTextureRec(exit_texture, exit_rec, (Vector2){ exitBounds.x, exitBounds.y }, WHITE);
+        DrawTextureRec(musicPaused ? soundoff_texture : sound_texture, sound_rec, (Vector2){ sound_bounds.x, sound_bounds.y }, WHITE);
 
         if(crashed){
             DrawText("You Crashed!", 25, 25, 25, RED);
@@ -311,7 +344,10 @@ int main(){
     UnloadTexture(exit_texture);
     UnloadTexture(star_texture);
     UnloadTexture(container_texture);
-
+    UnloadTexture(sound_texture);
+    UnloadTexture(soundoff_texture);
+    UnloadMusicStream(music);
+    CloseAudioDevice(); 
     CloseWindow();
     return 0;
 }
